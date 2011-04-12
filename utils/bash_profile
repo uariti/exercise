@@ -1,0 +1,197 @@
+# $FreeBSD: src/etc/profile,v 1.12.2.1 2000/07/31 20:13:26 rwatson Exp $
+#
+# System-wide .profile file for sh(1).
+#
+# Uncomment this to give you the default 4.2 behavior, where disk 
+# information is shown in K-Blocks
+# BLOCKSIZE=K; export BLOCKSIZE
+#
+# For the setting of languages and character sets please see
+# login.conf(5) and in particular the charset and lang options.
+# For full locales list check /usr/share/locale/*
+# You should also read the setlocale(3) man page for information
+# on how to achieve more precise control of locale settings.
+#
+# Read system messages
+# msgs -f
+# Allow terminal messages
+# mesg y
+#
+export HISTFILE=~/.bash_history
+export PATH=/sbin:/home/y/bin:$HOME/bin:$PATH:/usr/sbin:/usr/local/bin:/opt/scala/bin
+
+export PS1="\[\e[1;36;48m\][\u@\H \w]\$\[\e[0m\] "
+export PS=2">"
+
+export CVSROOT=vault.yahoo.com:/CVSROOT
+export CVS_RSH=/usr/bin/ssh
+
+[ -x /etc/bash_completion ] && source /etc/bash_completion
+
+if /usr/bin/tty|grep ttyv >/dev/null; then
+    export TERM=cons25;
+    WHICHTERM="nongraph";
+else
+    export TERM=xterm-color
+    WHICHTERM="graph";
+fi
+
+export SCALA_HOME=/opt/scala
+export JAVA_HOME=/home/y
+export ANT_HOME=/usr/local/ant
+export SGE_ROOT=/usr/local/sge
+
+export PATH=$PATH:$JAVA_HOME/bin:
+
+export ORACLE_HOME=/home/y/libexec/oracle
+export NLS_LANG=AMERICAN_AMERICA.WE8ISO8859P1
+export TNS_ADMIN=/home/y/conf/oracle
+export LD_LIBRARY_PATH=/home/y/conf/oracle/lib
+
+if [ "$PS1" != "" ];then
+    export PS1="\[\e[1;34;48m\][\u@\H \w]\$\[\e[0m\] "
+    export PS2=">"
+
+    if [ $WHICHTERM = "graph" ];then
+        # export PS1="\`C=\$?;R=\$YROOT_NAME;U=\\\`whoami\\\`;H=\\\`hostname| perl -pe 's/\.yahoo.com//g;\$_=uc;'\\\`;J="\@";I=\"\${U}\${J}\${H}\";echo oi; echo \${I};echo tchau;\`";
+	export PS1="\`C=\$?;R=\"\${YROOT_NAME}\";U=\\\`whoami\\\`;H=\\\`hostname| perl -pe 's/\.yahoo.com//g;\$_=uc;'\\\`;I=\"\${U}@\${H}\";if [ -n \"\$R\" ];then I=\"\$U@\${H}:\$R:\";fi;echo -en '\[\E[7m\]'\$I' \[\E[0m\][\[\E[1;37;40m\]';perl -e '\$n=\\\`stty -a\\\`;\$n=~s/.*?([0-9]*) *columns *([0-9]*);.*/\$1\$2/s;\$m=((!\$n)?80:\$n)-3;\$m-=length('\\\`echo -en \\\'\$I\\\'\\\`');\$m=((\$m<6)?(\$n+\$m):\$m);\$p=\$ARGV[0];\$p=~s|^\$ENV{HOME}|~|;\$p=((length(\$p)>\$m)?substr(\$p,0,\$m/2-3).\"...\".substr(\$p,\$m/2-\$m):\$p); print \"\\\x1b]0;\$ARGV[2]:\$p\\\x07\$p\"' \"\$PWD\";echo -e '\[\E[0m]\]';if [ \$C -eq 0 ]; then echo -en '0x00'; else printf '\[\033[31m\]0x%2.2x\[\033[0m\]' \$C;fi;if [ \$UID -eq 0 ]; then echo -n ' # ';else echo -n ' $ ';fi;printf \"\[\033]0;\${XTERM_TITLE}   \${U}@\${H} \${R} > \w\007\]\";\`"
+    fi
+    
+    #alias
+    alias ls='ls -FG --color=auto'
+    alias ll='ls -ls'
+    alias la='ls -la'
+    alias rm='rm -iv'
+    alias mv='mv -iv'
+    alias sset="env|sort"
+    alias cd..="cd .."
+    alias lsconn="sudo lsof -n -i -l"
+    alias r3='/home/y/bin/php -n -d openbasedir= -d extension=iconv.so -d extension=pdo.so -d extension=pdo_sqlite.so -d extension=hash.so /home/y/bin/r3'
+    alias sfind='find . -not -path "*.svn"'
+    function cdbr() {
+        cd `pwd -P|sed -e 's/^\(\/\(olddisk\/\)\?data\/[a-zA-Z]\+\)/\1_branch/;'`
+    }
+    function cdtr() {
+        cd `pwd -P|sed -e 's/^\(\/\(olddisk\/\)\?data\/[a-zA-Z]\+\)_branch/\1/;'`
+    }
+    function svngrep() {
+        eval 'last=$'$#';';
+        eval 'dir=$'$#';';
+        if [ $# -eq 1 ];then 
+            dir=.; 
+            rest="$*"
+        else
+            eval "rest=\"`for d in \`seq 1 \$[\$# - 1]\`; do echo -n \\\$\$d; done`\"";
+        fi
+        echo "Running this command"
+        echo "find ${dir} -not -path \"*.svn*\" -print | xargs -n10 grep \"$rest\""
+        find ${dir} -not -path "*.svn*" -print | xargs -n10 grep "$rest"
+    }
+    function trunkfy() {
+        location=$1;
+        location=${location:=.};
+        svn info $location |awk '/^URL/{print $2;}'|sed -e "s#branches/releases/[0-9]\+#trunk#" ;
+    }
+    function branchfy() {
+        branch=$2;
+        branch=${branch:=${BRANCH}};
+        if [ "a$branch" = "a" ];then
+            branch=`svn info /data/web_branch/ |awk -F '/' '/^URL/{print $NF;}'`;
+        fi
+        export BRANCH=$branch;
+        location=$1;
+        location=${location:=.};
+        svn info $location |awk '/^URL/{print $2;}'|sed -e "s#trunk#branches/releases/${BRANCH}#" ;
+    }
+    function difffy() {
+        file=${1:=.};
+        svn diff `branchfy $file` `trunkfy $file`;
+    }
+    function mergefy() {
+        file=${1:=.};
+        in_branch=`svn info $file | grep 'branches'`;
+        if [ "a$in_branch" == "a" ];then
+           cdbr  ;
+           svn merge `branchfy $file` `trunkfy $file` $file;
+           cdtr ;
+        else
+           cdtr ; 
+           svn merge `trunkfy $file` `branchfy $file` $file;
+           cdbr ;
+        fi
+
+    }
+    function branchrev() {
+        svn info `branchfy $*`|awk -F"[: ]" '/^Revision:/{print $3;}';
+    }
+    function branchgetlast() {
+        branchlocal='0';
+        if [ -d /data/web_branch ];then
+            branchlocal=`svn info /data/web_branch/ |awk -F '/' '/^URL/{print $NF;}'`;
+        fi
+        branch=`svn ls svn+ssh://svn.corp.yahoo.com/yahoo/searchfe/projects/web/branches/releases |tail -n 1|cut -d"/" -f1`;
+        if [ "$branchlocal" != "$branch" ];then
+           echo "New branch: $branch";
+           export BRANCH=$branch;
+           rm -fr /data/web_branch >/dev/null 2>/dev/null;
+           branch_url=`branchfy /data/web/`;
+           svn co $branch_url /data/web_branch;
+        fi
+    }
+    function branchget() {
+        if [ -d /data/web_branch ];then
+            branch=`svn info /data/web_branch/ |awk -F '/' '/^URL/{print $NF;}'`;
+        else
+            branchgetlast;
+        fi;
+        export BRANCH=$branch;
+        echo $BRANCH
+
+    }
+    function svnrevertmerge() {
+        svn status|awk '/^ [MG]/{print $2;}'|xargs -r -n 10 svn revert
+    }
+    function r3remotedb() {
+        mysql -ur3 -pgsp2 -hdb.gsp2.search.yahoo.com r3
+    }
+    export HISTCONTROL=erasedups
+    export HISTSIZE=10000
+    shopt -s histappend
+    PROMPT_COMMAND="history -a"
+        
+    
+    HISTIGNORE="&:l[asl]:[fb]g:exit"
+    export HISTFILE=~/.fucking_history
+
+#	[ -x $HOME/bin/gsp.sh ] && . $HOME/bin/gsp.sh
+
+#	[ -x $HOME/bin/gsp.sh ] && gsp_set_path dev
+    
+    ISINTERACTIVE=1
+else
+    ISINTERACTIVE=0
+fi
+
+function encoding_br() {
+    export LANG=pt_BR.ISO8859-1
+    export LANGUAGE=pt_BR.ISO8859-1
+    export LC_ALL=pt_BR.ISO8859-1
+    export LOCALE=pt_BR.ISO8859-1
+    export MM_CHARSET=pt_BR.ISO8859-1
+}
+
+function xtitle() {
+    export XTERM_TITLE="$*";
+
+
+    if [ -x /usr/bin/dcop ]; then
+        SESSION=`dcop $KONSOLE_DCOP currentSession`
+        dcop `dcopclient $KONSOLE_DCOP` $SESSION renameSession "$*"
+    fi
+}
+
+export SVNROOT=svn+ssh://svn.corp.yahoo.com/yahoo/searchfe
+export SOURCE_DIR=/data/searchfe
+export R3HOME=$SOURCE_DIR/projects/web/r3
+
+export SVN_EDITOR=vim
